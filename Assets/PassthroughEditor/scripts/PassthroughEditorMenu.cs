@@ -26,7 +26,7 @@ public class PassthroughEditorMenu : MonoBehaviour
     [Header("Gradient")]
     public Gradient gradient;
     public List<GradientColorKey> colorKeys;
-    public GradientAlphaKey[] alphaKeys;
+    public List<GradientAlphaKey> alphaKeys;
 
     public RawImage sliderParent;
     public GameObject sliderObject;
@@ -38,25 +38,12 @@ public class PassthroughEditorMenu : MonoBehaviour
 
     private int lastSelectedSlider = 0;
 
-
-    public Slider gradientRSlider;
-    public Slider gradientGSlider;
-    public Slider gradientBSlider;
-
-
     [SerializeField]
     public PassthroughData passthroughData = new PassthroughData();
 
     void Start()
     {
         gradient = new Gradient();
-
-        // Populate the alpha  keys at relative time 0 and 1  (0 and 100%)
-        this.alphaKeys = new GradientAlphaKey[2];
-        this.alphaKeys[0].alpha = 1f;
-        this.alphaKeys[0].time = 0f;
-        this.alphaKeys[1].alpha = 1f;
-        this.alphaKeys[1].time = 1f;
 
         /*
         // Populate the color keys at the relative time 0 and 1 (0 and 100%)
@@ -97,7 +84,7 @@ public class PassthroughEditorMenu : MonoBehaviour
             newPassthrough.name = "Passthrough " + this.passthroughData.passthroughs.Count;
             newPassthrough.opacity = 1f;
             newPassthrough.edgeRendering = false;
-            newPassthrough.edgeColor = new ColorData().ConvertVector3(Color.white);
+            newPassthrough.edgeColor = new ColorData().ConvertVector4(Color.white);
             newPassthrough.contrast = 0;
             newPassthrough.brightness = 0;
             newPassthrough.posterize = 0;
@@ -105,8 +92,8 @@ public class PassthroughEditorMenu : MonoBehaviour
             newPassthrough.gradientMode = (int)GradientMode.Blend;
             newPassthrough.gradient = new List<GradientPoint>();
 
-            newPassthrough.gradient.Add(new GradientPoint() { position = 0, color = new ColorData().ConvertVector3(Color.black) });
-            newPassthrough.gradient.Add(new GradientPoint() { position = 1, color = new ColorData().ConvertVector3(Color.white) });
+            newPassthrough.gradient.Add(new GradientPoint() { position = 0, color = new ColorData().ConvertVector4(Color.black) });
+            newPassthrough.gradient.Add(new GradientPoint() { position = 1, color = new ColorData().ConvertVector4(Color.white) });
 
             this.passthroughData.passthroughs.Add(newPassthrough);
             this.UpdateDropdown(this.passthroughData.passthroughs.Count - 1);
@@ -136,11 +123,12 @@ public class PassthroughEditorMenu : MonoBehaviour
 
         if (this.edgeRenderingToggle != null)
             this.edgeRenderingToggle.isOn = passthrough.edgeRendering;
-        if (this.edgeColorSlider != null && this.edgeColorSlider.Length >= 3)
+        if (this.edgeColorSlider != null && this.edgeColorSlider.Length >= 4)
         {
             this.edgeColorSlider[0].SetValueWithoutNotify((float)passthrough.edgeColor.r);
             this.edgeColorSlider[1].SetValueWithoutNotify((float)passthrough.edgeColor.g);
             this.edgeColorSlider[2].SetValueWithoutNotify((float)passthrough.edgeColor.b);
+            this.edgeColorSlider[3].SetValueWithoutNotify((float)passthrough.edgeColor.a);
         }
 
         if (this.contrastSlider != null)
@@ -163,6 +151,7 @@ public class PassthroughEditorMenu : MonoBehaviour
         //create new
         this._gradientSliders = new List<Slider>();
         this.colorKeys = new List<GradientColorKey>();
+        this.alphaKeys = new List<GradientAlphaKey>();
 
         for (int i = 0; i < passthrough.gradient.Count; i++)
         {
@@ -173,6 +162,13 @@ public class PassthroughEditorMenu : MonoBehaviour
             };
             this.colorKeys.Add(colorKey);
 
+            GradientAlphaKey alphaKey = new GradientAlphaKey()
+            {
+                alpha = (float)passthrough.gradient[i].color.a,
+                time = passthrough.gradient[i].position
+            };
+            this.alphaKeys.Add(alphaKey);
+
             this.CreateSliderObject(i, colorKey);
 
             //spawn slider Object
@@ -180,7 +176,7 @@ public class PassthroughEditorMenu : MonoBehaviour
         this.lastSelectedSlider = 0;
 
         this.gradient.mode = (GradientMode)passthrough.gradientMode;
-        this.UpdateColorSliders(this.colorKeys[this.lastSelectedSlider].color);
+        this.UpdateColorSliders(this.colorKeys[this.lastSelectedSlider].color, this.alphaKeys[this.lastSelectedSlider].alpha);
         this.UpdateGradient();
 
         if (this.OVRPassthrough != null)
@@ -252,33 +248,44 @@ public class PassthroughEditorMenu : MonoBehaviour
     {
         if (this.OVRPassthrough != null)
         {
-            Color col = new Color(value, this.OVRPassthrough.edgeColor.g, this.OVRPassthrough.edgeColor.b);
+            Color col = new Color(value, this.OVRPassthrough.edgeColor.g, this.OVRPassthrough.edgeColor.b, this.OVRPassthrough.edgeColor.a);
             this.OVRPassthrough.edgeColor = col;
 
             if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector3(col);
+                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector4(col);
         }
     }
     public void SetGreenEdgeColor(float value)
     {
         if (this.OVRPassthrough != null)
         {
-            Color col = new Color(this.OVRPassthrough.edgeColor.r, value, this.OVRPassthrough.edgeColor.b);
+            Color col = new Color(this.OVRPassthrough.edgeColor.r, value, this.OVRPassthrough.edgeColor.b, this.OVRPassthrough.edgeColor.a);
             this.OVRPassthrough.edgeColor = col;
 
             if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector3(col);
+                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector4(col);
         }
     }
     public void SetBlueEdgeColor(float value)
     {
         if (this.OVRPassthrough != null)
         {
-            Color col = new Color(this.OVRPassthrough.edgeColor.r, this.OVRPassthrough.edgeColor.g, value);
+            Color col = new Color(this.OVRPassthrough.edgeColor.r, this.OVRPassthrough.edgeColor.g, value, this.OVRPassthrough.edgeColor.a);
             this.OVRPassthrough.edgeColor = col;
 
             if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector3(col);
+                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector4(col);
+        }
+    }
+    public void SetAlphaEdgeColor(float value)
+    {
+        if (this.OVRPassthrough != null)
+        {
+            Color col = new Color(this.OVRPassthrough.edgeColor.r, this.OVRPassthrough.edgeColor.g, this.OVRPassthrough.edgeColor.b, value);
+            this.OVRPassthrough.edgeColor = col;
+
+            if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
+                this.passthroughData.passthroughs[this._activePassthrough].edgeColor.ConvertVector4(col);
         }
     }
 
@@ -295,7 +302,7 @@ public class PassthroughEditorMenu : MonoBehaviour
 
     void UpdateGradient()
     {
-        this.gradient.SetKeys(colorKeys.ToArray(), alphaKeys);
+        this.gradient.SetKeys(this.colorKeys.ToArray(), this.alphaKeys.ToArray());
         if (this.OVRPassthrough != null)
             this.OVRPassthrough.colorMapEditorGradient = this.gradient;
 
@@ -321,7 +328,9 @@ public class PassthroughEditorMenu : MonoBehaviour
         {
             slider.value = colorKey.time;
             ColorBlock colorBlock = slider.colors;
-            colorBlock.normalColor = colorKey.color;
+            Color col = colorKey.color;
+            col.a = 1f;
+            colorBlock.normalColor = col;
             slider.colors = colorBlock;
             slider.onValueChanged.AddListener(delegate { this.OnGradientSliderChange(index); });
 
@@ -338,22 +347,27 @@ public class PassthroughEditorMenu : MonoBehaviour
         colorKey.time = this._gradientSliders[index].value;
         this.colorKeys[index] = colorKey;
 
+        GradientAlphaKey alphaKey = this.alphaKeys[index];
+        alphaKey.time = this._gradientSliders[index].value;
+        this.alphaKeys[index] = alphaKey;
+
         this.UpdateGradient();
 
         this.lastSelectedSlider = index;
-        this.UpdateColorSliders(this.colorKeys[this.lastSelectedSlider].color);
+        this.UpdateColorSliders(this.colorKeys[this.lastSelectedSlider].color, this.alphaKeys[this.lastSelectedSlider].alpha);
 
         if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
             this.passthroughData.passthroughs[this._activePassthrough].gradient[index].position = this._gradientSliders[index].value;
     }
 
-    void UpdateColorSliders(Color color)
+    void UpdateColorSliders(Color color, float a)
     {
         if (this.gradientColorSliders.Length >= 3)
         {
             this.gradientColorSliders[0].value = color.r;
             this.gradientColorSliders[1].value = color.g;
             this.gradientColorSliders[2].value = color.b;
+            this.gradientColorSliders[3].value = a;
         }
     }
 
@@ -366,6 +380,13 @@ public class PassthroughEditorMenu : MonoBehaviour
         };
         this.colorKeys.Add(colorKey);
 
+        GradientAlphaKey alphaKey = new GradientAlphaKey()
+        {
+            alpha = 1,
+            time = 0.5f
+        };
+        this.alphaKeys.Add(alphaKey);
+
         this.CreateSliderObject(this.colorKeys.Count - 1, colorKey);
 
         this.UpdateGradient();
@@ -375,7 +396,7 @@ public class PassthroughEditorMenu : MonoBehaviour
             GradientPoint gradientPoint = new GradientPoint()
             {
                 position = colorKey.time,
-                color = new ColorData().ConvertVector3(colorKey.color)
+                color = new ColorData().ConvertVector4(colorKey.color)
             };
             this.passthroughData.passthroughs[this._activePassthrough].gradient.Add(gradientPoint);
         }
@@ -385,7 +406,7 @@ public class PassthroughEditorMenu : MonoBehaviour
     public void SetRedGradientColor(float value)
     {
         ColorBlock colorBlock = this._gradientSliders[this.lastSelectedSlider].colors;
-        colorBlock.normalColor = new Color(value, colorBlock.normalColor.g, colorBlock.normalColor.b);
+        colorBlock.normalColor = new Color(value, colorBlock.normalColor.g, colorBlock.normalColor.b, colorBlock.normalColor.a);
         this._gradientSliders[this.lastSelectedSlider].colors = colorBlock;
 
         GradientColorKey colorKey = this.colorKeys[this.lastSelectedSlider];
@@ -395,13 +416,13 @@ public class PassthroughEditorMenu : MonoBehaviour
         this.UpdateGradient();
 
         if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector3(colorBlock.normalColor);
+            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector4(colorBlock.normalColor);
     }
 
     public void SetGreenGradientColor(float value)
     {
         ColorBlock colorBlock = this._gradientSliders[this.lastSelectedSlider].colors;
-        colorBlock.normalColor = new Color(colorBlock.normalColor.r, value, colorBlock.normalColor.b);
+        colorBlock.normalColor = new Color(colorBlock.normalColor.r, value, colorBlock.normalColor.b, colorBlock.normalColor.a);
         this._gradientSliders[this.lastSelectedSlider].colors = colorBlock;
 
         GradientColorKey colorKey = this.colorKeys[this.lastSelectedSlider];
@@ -411,12 +432,12 @@ public class PassthroughEditorMenu : MonoBehaviour
         this.UpdateGradient();
 
         if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector3(colorBlock.normalColor);
+            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector4(colorBlock.normalColor);
     }
     public void SetBlueGradientColor(float value)
     {
         ColorBlock colorBlock = this._gradientSliders[this.lastSelectedSlider].colors;
-        colorBlock.normalColor = new Color(colorBlock.normalColor.r, colorBlock.normalColor.g, value);
+        colorBlock.normalColor = new Color(colorBlock.normalColor.r, colorBlock.normalColor.g, value, colorBlock.normalColor.a);
         this._gradientSliders[this.lastSelectedSlider].colors = colorBlock;
 
         GradientColorKey colorKey = this.colorKeys[this.lastSelectedSlider];
@@ -426,7 +447,19 @@ public class PassthroughEditorMenu : MonoBehaviour
         this.UpdateGradient();
 
         if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
-            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector3(colorBlock.normalColor);
+            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ConvertVector4(colorBlock.normalColor);
+    }
+
+    public void SetAlphaGradientColor(float value)
+    {
+        GradientAlphaKey alphaKey = this.alphaKeys[this.lastSelectedSlider];
+        alphaKey.alpha = value;
+        this.alphaKeys[this.lastSelectedSlider] = alphaKey;
+
+        this.UpdateGradient();
+
+        if (this.passthroughData != null && this.passthroughData.passthroughs.Count > this._activePassthrough)
+            this.passthroughData.passthroughs[this._activePassthrough].gradient[this.lastSelectedSlider].color.ChangeAlpha(alphaKey.alpha);
     }
 
     public void RemoveSelectedGradientSlider()
@@ -437,6 +470,8 @@ public class PassthroughEditorMenu : MonoBehaviour
             this._gradientSliders.RemoveAt(this.lastSelectedSlider);
 
             this.colorKeys.RemoveAt(this.lastSelectedSlider);
+            this.alphaKeys.RemoveAt(this.lastSelectedSlider);
+
             this.lastSelectedSlider = this._gradientSliders.Count - 1;
 
             this.UpdateGradient();
@@ -518,17 +553,27 @@ public class ColorData
     public double r;
     public double g;
     public double b;
+    public double a;
 
-    public ColorData ConvertVector3(Color color)
+    public ColorData ConvertVector4(Color color)
     {
         r = color.r;
         g = color.g;
         b = color.b;
+        a = color.a;
 
         return this;
     }
+
+    public float ChangeAlpha(float value)
+    {
+        a = value;
+
+        return (float)a;
+    }
+
     public Color GetColor()
     {
-        return new Color((float)r, (float)g, (float)b, 1f);
+        return new Color((float)r, (float)g, (float)b, (float)a);
     }
 }
